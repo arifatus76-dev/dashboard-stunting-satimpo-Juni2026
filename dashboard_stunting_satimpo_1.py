@@ -604,11 +604,11 @@ def page_konsumsi_ibu(df):
 # ===== MAIN =====
 def main():
     st.markdown("""<div class="dh"><h1>📋 Dashboard Indepth Stunting</h1>
-    <p>Kelurahan Satimpo, Kec. Bontang Selatan, Kota Bontang — Kalimantan Timur | Juli 2026</p></div>""",unsafe_allow_html=True)
+    <p>Kelurahan Satimpo, Kec. Bontang Selatan, Kota Bontang — Kalimantan Timur | Juni 2026</p></div>""",unsafe_allow_html=True)
     st.markdown("""<div style="background:linear-gradient(135deg,#F0FDFA,#CCFBF1);border:1px solid #5EEAD4;border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1rem">
     <div style="font-size:1rem;font-weight:600;color:#134E4A;margin-bottom:.6rem">📌 Tentang Penelitian</div>
     <div style="font-size:.9rem;color:#1E293B;line-height:1.7">
-    Indepth survey terhadap <b>seluruh 48 balita stunting</b> di Kel. Satimpo (Juli 2026).
+    Indepth survey terhadap <b>seluruh 48 balita stunting</b> di Kel. Satimpo (Juni 2026).
     Dari 347 balita ditimbang, <b>48 teridentifikasi stunting (13,83%)</b> — seluruhnya menjadi responden (<i>total sampling</i>).
     Kerangka analisis: SSGI 2024.</div></div>""",unsafe_allow_html=True)
 
@@ -650,6 +650,6 @@ def main():
     elif halaman=="🏥 Pengasuhan & Determinan": page_pengasuhan(df)
     elif halaman=="🍽️ Konsumsi Ibu": page_konsumsi_ibu(df)
     st.markdown("---")
-    st.markdown('<div style="text-align:center;color:#64748B;font-size:.85rem">Dashboard Indepth Stunting — Kel. Satimpo, Kota Bontang | Juli 2026 | Kerangka: SSGI 2024</div>',unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center;color:#64748B;font-size:.85rem">Dashboard Indepth Stunting — Kel. Satimpo, Kota Bontang | Juni 2026 | Kerangka: SSGI 2024</div>',unsafe_allow_html=True)
 
 if __name__=="__main__": main()
