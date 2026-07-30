@@ -12,7 +12,7 @@ from datetime import datetime
 import gc, re
 import plotly.io as pio
 pio.templates['custom'] = pio.templates['plotly']
-pio.templates['custom'].layout.font = dict(color='#1E293B')
+pio.templates['custom'].layout.font = dict(color='#1E293B', size=14)
 pio.templates.default = 'custom'
 
 st.set_page_config(page_title="Indepth Stunting - Satimpo",page_icon="📋",layout="wide",initial_sidebar_state="expanded")
@@ -153,7 +153,7 @@ def page_ringkasan(df):
         fig=px.bar(kel,x='Prevalensi',y='Kelurahan',orientation='h',text=kel['Prevalensi'].apply(lambda x:f'{x:.2f}%'.replace('.',',')),
                    title='📊 Prevalensi Stunting per Kelurahan — Juni 2026')
         fig.update_traces(marker_color=colors,textposition='outside',cliponaxis=False)
-        fig.add_vline(x=14.05,line_dash='dash',line_color='#0F766E',annotation_text='Kota Bontang: 14,05%',annotation_font_color='#1E293B')
+        fig.add_vline(x=14.05,line_dash='dash',line_color='#0F766E',annotation_text='Kota Bontang: 14,05%',annotation_font_color='#1E293B',annotation_position='bottom right')
         fig.update_layout(font=dict(color='#1E293B'),height=500,margin=dict(l=10,r=80,t=70,b=30),xaxis=dict(range=[0,25]),yaxis_title='')
         st.plotly_chart(fig,use_container_width=True); del fig
     with c2:
@@ -214,14 +214,24 @@ def page_ringkasan(df):
     # Kelahiran
     st.markdown('<div class="sh">👶 Karakteristik Kelahiran</div>',unsafe_allow_html=True)
     c1,c2,c3=st.columns(3)
-    for key,bins,labels,title,clr,threshold,lbl_th,container in [
-        ('bb_lahir',[1000,2000,2500,3000,3500,4000,5000],['1000-1999','2000-2499','2500-2999','3000-3499','3500-3999','≥ 4000'],'BB Lahir (gram)','#0D9488',2500,'Berat Lahir Rendah',c1),
-        ('pb_lahir',[35,42,45,48,50,52,55],['35-41','42-44','45-47','48-49','50-51','≥ 52'],'PB Lahir (cm)','#2563EB',48,'Pendek',c2),
-        ('usia_kehamilan',[30,35,37,39,41,43],['30-34','35-36','37-38','39-40','≥ 41'],'Usia Kehamilan (mg)','#7C3AED',37,'Prematur',c3)]:
+    # vline_pos = posisi garis batas di antara interval (index kategori)
+    # BB Lahir: batas 2500g antara '2000-2499' (idx 1) dan '2500-2999' (idx 2) → 1.5
+    # PB Lahir: batas 48cm antara '45-47' (idx 2) dan '48-49' (idx 3) → 2.5
+    # Usia Kehamilan: batas 37mg antara '35-36' (idx 1) dan '37-38' (idx 2) → 1.5
+    for key,bins,labels,title,clr,threshold,lbl_th,container,vline_pos,vline_label in [
+        ('bb_lahir',[0,2500,3000,3500,4000,5000],['< 2500\n(BBLR)','2500-2999','3000-3499','3500-3999','≥ 4000'],'BB Lahir (gram)','#0D9488',2500,'Berat Lahir Rendah',c1,0.5,'< 2500 gram'),
+        ('pb_lahir',[0,48,50,52,55],['< 48\n(Pendek)','48-49','50-51','≥ 52'],'PB Lahir (cm)','#2563EB',48,'Pendek',c2,0.5,'< 48 cm'),
+        ('usia_kehamilan',[0,37,39,41,45],['< 37\n(Prematur)','37-38','39-40','≥ 41'],'Usia Kehamilan (mg)','#7C3AED',37,'Prematur',c3,0.5,'< 37 minggu')]:
         col=g(df,key)
         if col:
             with container:
                 fig,m,mn,s=dist_bar(df[col],bins,labels,f'📊 {title}',clr)
+                # Tambah garis batas merah putus-putus
+                fig.add_shape(type="line",x0=vline_pos,x1=vline_pos,y0=0,y1=1,yref="paper",
+                              line=dict(color="red",width=2,dash="dash"))
+                fig.add_annotation(x=vline_pos,y=1,yref="paper",text=vline_label,
+                                   showarrow=False,font=dict(color="red",size=11),
+                                   xanchor="right",yanchor="bottom",xshift=-4)
                 st.plotly_chart(fig,use_container_width=True); del fig
                 cnt=(s<threshold).sum()
                 st.markdown(f'<div class="card">Terbanyak: <b>{m}</b> ({mn}) | ⚠️ {lbl_th}: <b>{cnt}</b> ({fmt(pct(cnt,len(s)))})</div>',unsafe_allow_html=True)
@@ -610,7 +620,7 @@ def main():
     <div style="font-size:.9rem;color:#1E293B;line-height:1.7">
     Indepth survey terhadap <b>seluruh 48 balita stunting</b> di Kel. Satimpo (Juni 2026).
     Dari 347 balita ditimbang, <b>48 teridentifikasi stunting (13,83%)</b> — seluruhnya menjadi responden (<i>total sampling</i>).
-    Kerangka analisis: SSGI 2024.</div></div>""",unsafe_allow_html=True)
+    Referensi: SSGI 2024.</div></div>""",unsafe_allow_html=True)
 
     try: df=load_data()
     except Exception as e: st.error(f"⚠️ File tidak ditemukan: {e}"); st.stop()
@@ -633,9 +643,9 @@ def main():
 
     st.sidebar.markdown("---")
     st.sidebar.markdown('<h2 style="color:#0F766E;text-align:center">📋 Info</h2>',unsafe_allow_html=True)
-    st.sidebar.markdown(f"**Responden tampil:** {len(df)}\n\n**Desain:** Total sampling\n\n**Kerangka:** SSGI 2024")
+    st.sidebar.markdown(f"**Responden tampil:** {len(df)}\n\n**Desain:** Total sampling\n\n**Referensi:** SSGI 2024")
     st.sidebar.markdown("---")
-    st.sidebar.info("**Satimpo:** 48/347 (13,83%)\n\n**Kota Bontang:** 14,05%\n\n**Peringkat:** 8/15")
+    st.sidebar.info("**Prevalensi Stunting Satimpo:**\n48 balita stunting dari 347 balita ditimbang (13,83%)\n\n**Prevalensi Stunting Kota Bontang:**\n1.389 dari 9.884 balita ditimbang (14,05%)\n\n**Peringkat Satimpo:**\nUrutan ke-8 dari 15 kelurahan di Kota Bontang")
 
     if len(df)==0:
         st.warning("⚠️ Tidak ada data yang sesuai filter. Silakan ubah pilihan RT atau Posyandu.")
@@ -650,6 +660,6 @@ def main():
     elif halaman=="🏥 Pengasuhan & Determinan": page_pengasuhan(df)
     elif halaman=="🍽️ Konsumsi Ibu": page_konsumsi_ibu(df)
     st.markdown("---")
-    st.markdown('<div style="text-align:center;color:#64748B;font-size:.85rem">Dashboard Indepth Stunting — Kel. Satimpo, Kota Bontang | Juni 2026 | Kerangka: SSGI 2024</div>',unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center;color:#64748B;font-size:.85rem">Dashboard Indepth Stunting — Kel. Satimpo, Kota Bontang | Juni 2026 | Referensi: SSGI 2024</div>',unsafe_allow_html=True)
 
 if __name__=="__main__": main()
