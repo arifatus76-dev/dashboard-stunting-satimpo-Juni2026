@@ -21,12 +21,14 @@ FONT_SIZE_LEGEND = 14
 
 pio.templates['custom'] = pio.templates['plotly']
 pio.templates['custom'].layout.font = dict(color='#1E293B', size=FONT_SIZE)
-# Perbaikan: title.font bukan title_font
 pio.templates['custom'].layout.title = dict(font=dict(size=FONT_SIZE_TITLE))
 pio.templates.default = 'custom'
 
 st.set_page_config(page_title="Indepth Stunting - Satimpo",page_icon="📋",layout="wide",initial_sidebar_state="expanded")
-st.markdown("""<style>
+
+# CSS untuk styling dashboard dan menu
+st.markdown("""
+<style>
 .main .block-container{padding:1rem 2rem;max-width:1400px}
 .dh{background:linear-gradient(135deg,#0F766E,#115E59 50%,#134E4A);padding:1.5rem 2rem;border-radius:14px;color:#fff;margin-bottom:1.5rem;box-shadow:0 4px 20px rgba(15,118,110,.3)}
 .dh h1{margin:0;font-size:1.7rem;font-weight:700} .dh p{margin:.4rem 0 0;opacity:.9;font-size:.95rem}
@@ -36,7 +38,128 @@ st.markdown("""<style>
 [data-testid="stMetricLabel"]{font-weight:600!important;color:#475569!important}
 [data-testid="stMetricValue"]{font-size:1.4rem!important;font-weight:700!important;color:#134E4A!important}
 #MainMenu{visibility:hidden}footer{visibility:hidden}
-</style>""",unsafe_allow_html=True)
+
+/* ===== CSS UNTUK MENU BUTTON ===== */
+div[data-testid="column"] {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.menu-btn {
+    width: 100%;
+    padding: 16px 8px;
+    border: 2px solid #E2E8F0;
+    border-radius: 12px;
+    background: #F8FAFC;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    text-align: center;
+    font-family: inherit;
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-btn:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    border-color: #0F766E;
+    background: #F0FDFA;
+}
+
+.menu-btn.active {
+    background: linear-gradient(135deg, #0F766E, #115E59);
+    border-color: #0F766E;
+    box-shadow: 0 4px 15px rgba(15,118,110,0.4);
+    transform: translateY(-2px);
+}
+
+.menu-btn.active .menu-icon {
+    filter: brightness(0) invert(1);
+}
+
+.menu-btn.active .menu-label {
+    color: white !important;
+}
+
+.menu-btn .menu-icon {
+    font-size: 28px;
+    display: block;
+    margin-bottom: 4px;
+    transition: all 0.3s ease;
+}
+
+.menu-btn .menu-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1E293B;
+    transition: all 0.3s ease;
+}
+
+.menu-btn .menu-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #DC2626;
+    color: white;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    font-size: 11px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(220,38,38,0.3);
+}
+
+/* Sembunyikan label button default Streamlit */
+.stButton button {
+    width: 100%;
+    height: auto !important;
+    min-height: 80px;
+    padding: 12px 8px !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    font-family: inherit !important;
+    font-size: inherit !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    word-wrap: break-word !important;
+}
+
+.stButton button:hover {
+    background: transparent !important;
+    border-color: transparent !important;
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+.stButton button:focus {
+    box-shadow: none !important;
+}
+
+.stButton button:active {
+    box-shadow: none !important;
+    transform: none !important;
+}
+
+/* Responsif untuk mobile */
+@media (max-width: 768px) {
+    .menu-btn .menu-icon {
+        font-size: 22px;
+    }
+    .menu-btn .menu-label {
+        font-size: 0.75rem;
+    }
+    .stButton button {
+        min-height: 60px;
+        padding: 8px 4px !important;
+    }
+}
+</style>
+""",unsafe_allow_html=True)
 
 # ===== UTILITAS =====
 def pct(n,t): return round((n/t)*100,1) if t>0 else 0
@@ -81,13 +204,37 @@ def bar_yn(df, col, title, clr="#0D9488"):
     ya = (df[col].astype(str).str.strip().str.lower() == "ya").sum()
     return ya, n
 
-def dist_bar(series, bins, labels, title, clr):
+def dist_bar(series, bins, labels, title, clr, threshold_index=None, threshold_label=None):
+    """Create distribution bar chart with optional threshold line at specific index"""
     s = pd.to_numeric(series.astype(str).str.replace(",","."), errors='coerce').dropna()
     cat = pd.cut(s, bins=bins, labels=labels, right=False)
     dist = cat.value_counts().sort_index().reset_index(); dist.columns = ['Interval','Jumlah']
     modus = dist.loc[dist['Jumlah'].idxmax()]
     fig = px.bar(dist, x='Interval', y='Jumlah', text='Jumlah', title=title, color_discrete_sequence=[clr])
     fig.update_traces(textposition='outside',cliponaxis=False,textfont=dict(size=FONT_SIZE_TRACE, color='#1E293B'))
+    
+    # Tambahkan garis threshold jika ada
+    if threshold_index is not None and threshold_label is not None:
+        # threshold_index adalah posisi bar dimana garis akan diletakkan
+        # Garis diletakkan di antara bar threshold_index-1 dan threshold_index
+        x_pos = threshold_index - 0.5
+        fig.add_shape(type="line", 
+                     x0=x_pos, 
+                     x1=x_pos, 
+                     y0=0, 
+                     y1=1, 
+                     yref="paper",
+                     line=dict(color="red", width=2.5, dash="dash"))
+        fig.add_annotation(x=x_pos, 
+                          y=1, 
+                          yref="paper", 
+                          text=threshold_label,
+                          showarrow=False,
+                          font=dict(color="red", size=FONT_SIZE-1, weight="bold"),
+                          xanchor="right",
+                          yanchor="bottom",
+                          xshift=-4)
+    
     fig.update_layout(
         font=dict(size=FONT_SIZE, color='#1E293B'),
         title=dict(font=dict(size=FONT_SIZE_TITLE)),
@@ -246,26 +393,43 @@ def page_ringkasan(df):
     # Kelahiran
     st.markdown('<div class="sh">👶 Karakteristik Kelahiran</div>',unsafe_allow_html=True)
     c1,c2,c3=st.columns(3)
-    for key,bins,labels,title,clr,threshold,lbl_th,container,vline_pos,vline_label in [
-        ('bb_lahir',[0,2500,3000,3500,4000,5000],['< 2500\n(BBLR)','2500-2999','3000-3499','3500-3999','≥ 4000'],'BB Lahir (gram)','#0D9488',2500,'Berat Lahir Rendah',c1,0.5,'< 2500 gram'),
-        ('pb_lahir',[0,48,50,52,55],['< 48\n(Pendek)','48-49','50-51','≥ 52'],'PB Lahir (cm)','#2563EB',48,'Pendek',c2,0.5,'< 48 cm'),
-        ('usia_kehamilan',[0,37,39,41,45],['< 37\n(Prematur)','37-38','39-40','≥ 41'],'Usia Kehamilan (mg)','#7C3AED',37,'Prematur',c3,0.5,'< 37 minggu')]:
-        col=g(df,key)
-        if col:
-            with container:
-                fig,m,mn,s=dist_bar(df[col],bins,labels,f'📊 {title}',clr)
-                fig.add_shape(type="line",x0=vline_pos,x1=vline_pos,y0=0,y1=1,yref="paper",
-                              line=dict(color="red",width=2,dash="dash"))
-                fig.add_annotation(x=vline_pos,y=1,yref="paper",text=vline_label,
-                                   showarrow=False,font=dict(color="red",size=FONT_SIZE-1),
-                                   xanchor="right",yanchor="bottom",xshift=-4)
-                st.plotly_chart(fig,use_container_width=True); del fig
-                cnt=(s<threshold).sum()
-                st.markdown(f'<div class="card">Terbanyak: <b>{m}</b> ({mn}) | ⚠️ {lbl_th}: <b>{cnt}</b> ({fmt(pct(cnt,len(s)))})</div>',unsafe_allow_html=True)
+    
+    # BB Lahir - threshold di index 1 (antara '< 2500' dan '2500-2999')
+    col=g(df,'bb_lahir')
+    if col:
+        with c1:
+            fig,m,mn,s=dist_bar(df[col],[0,2500,3000,3500,4000,5000],
+                               ['< 2500','2500-2999','3000-3499','3500-3999','≥ 4000'],
+                               '📊 BB Lahir (gram)','#0D9488',1,'< 2500 g (BBLR)')
+            st.plotly_chart(fig,use_container_width=True); del fig
+            cnt=(s<2500).sum()
+            st.markdown(f'<div class="card">Terbanyak: <b>{m}</b> ({mn}) | ⚠️ BBLR: <b>{cnt}</b> ({fmt(pct(cnt,len(s)))})</div>',unsafe_allow_html=True)
+    
+    # PB Lahir - threshold di index 1 (antara '< 48' dan '48-49')
+    col=g(df,'pb_lahir')
+    if col:
+        with c2:
+            fig,m,mn,s=dist_bar(df[col],[0,48,50,52,55],
+                               ['< 48','48-49','50-51','≥ 52'],
+                               '📊 PB Lahir (cm)','#2563EB',1,'< 48 cm (Pendek)')
+            st.plotly_chart(fig,use_container_width=True); del fig
+            cnt=(s<48).sum()
+            st.markdown(f'<div class="card">Terbanyak: <b>{m}</b> ({mn}) | ⚠️ Pendek: <b>{cnt}</b> ({fmt(pct(cnt,len(s)))})</div>',unsafe_allow_html=True)
+    
+    # Usia Kehamilan - threshold di index 1 (antara '< 37' dan '37-38')
+    col=g(df,'usia_kehamilan')
+    if col:
+        with c3:
+            fig,m,mn,s=dist_bar(df[col],[0,37,39,41,45],
+                               ['< 37','37-38','39-40','≥ 41'],
+                               '📊 Usia Kehamilan (mg)','#7C3AED',1,'< 37 mg (Prematur)')
+            st.plotly_chart(fig,use_container_width=True); del fig
+            cnt=(s<37).sum()
+            st.markdown(f'<div class="card">Terbanyak: <b>{m}</b> ({mn}) | ⚠️ Prematur: <b>{cnt}</b> ({fmt(pct(cnt,len(s)))})</div>',unsafe_allow_html=True)
 
     gc.collect()
 
-# ===== 2. RIWAYAT KEHAMILAN (BARU) =====
+# ===== 2. RIWAYAT KEHAMILAN =====
 def page_kehamilan(df):
     n=len(df)
     st.markdown('<div class="sh">🤰 Kondisi Ibu saat Kehamilan Balita</div>',unsafe_allow_html=True)
@@ -289,18 +453,20 @@ def page_kehamilan(df):
     with c1:
         col=g(df,'tinggi_ayah')
         if col:
-            fig,m,mn,s=dist_bar(df[col],[0,160,165,170,175,190],['< 160\n(Pendek)','160-164','165-169','170-174','≥ 175'],'📊 Tinggi Badan Ayah (cm)','#0891B2')
-            fig.add_shape(type="line",x0=0.5,x1=0.5,y0=0,y1=1,yref="paper",line=dict(color="red",width=2,dash="dash"))
-            fig.add_annotation(x=0.5,y=1,yref="paper",text="< 160 cm",showarrow=False,font=dict(color="red",size=FONT_SIZE-1),xanchor="right",yanchor="bottom",xshift=-4)
+            # Threshold di index 1 (antara '< 160' dan '160-164')
+            fig,m,mn,s=dist_bar(df[col],[0,160,165,170,175,190],
+                               ['< 160','160-164','165-169','170-174','≥ 175'],
+                               '📊 Tinggi Badan Ayah (cm)','#0891B2',1,'< 160 cm')
             st.plotly_chart(fig,use_container_width=True); del fig
             pdk=(s<160).sum()
             st.markdown(f'<div class="card">📏 Terbanyak: <b>{m}</b> ({mn}) | Pendek (< 160 cm): <b>{pdk}</b> ({fmt(pct(pdk,len(s)))})</div>',unsafe_allow_html=True)
     with c2:
         col=g(df,'tinggi_ibu')
         if col:
-            fig,m,mn,s=dist_bar(df[col],[0,150,155,160,165,175],['< 150\n(Pendek)','150-154','155-159','160-164','≥ 165'],'📊 Tinggi Badan Ibu (cm)','#D946EF')
-            fig.add_shape(type="line",x0=0.5,x1=0.5,y0=0,y1=1,yref="paper",line=dict(color="red",width=2,dash="dash"))
-            fig.add_annotation(x=0.5,y=1,yref="paper",text="< 150 cm",showarrow=False,font=dict(color="red",size=FONT_SIZE-1),xanchor="right",yanchor="bottom",xshift=-4)
+            # Threshold di index 1 (antara '< 150' dan '150-154')
+            fig,m,mn,s=dist_bar(df[col],[0,150,155,160,165,175],
+                               ['< 150','150-154','155-159','160-164','≥ 165'],
+                               '📊 Tinggi Badan Ibu (cm)','#D946EF',1,'< 150 cm')
             st.plotly_chart(fig,use_container_width=True); del fig
             pdk=(s<150).sum()
             st.markdown(f'<div class="card">📏 Terbanyak: <b>{m}</b> ({mn}) | Pendek (< 150 cm): <b>{pdk}</b> ({fmt(pct(pdk,len(s)))})</div>',unsafe_allow_html=True)
@@ -315,10 +481,16 @@ def page_kehamilan(df):
         with c1:
             fig=px.bar(pd_dist,x='Ke-',y='Jumlah',text='Jumlah',title='📊 Distribusi Paritas (Kehamilan ke-)',color_discrete_sequence=['#6366F1'])
             fig.update_traces(textposition='outside',cliponaxis=False,textfont=dict(size=FONT_SIZE_TRACE, color='#1E293B'))
+            # Tambahkan garis threshold untuk grande multipara (>=4)
+            fig.add_shape(type="line", x0=3.5, x1=3.5, y0=0, y1=1, yref="paper",
+                         line=dict(color="red", width=2.5, dash="dash"))
+            fig.add_annotation(x=3.5, y=1, yref="paper", text="≥ 4 (Grande Multipara)",
+                              showarrow=False, font=dict(color="red", size=FONT_SIZE-1, weight="bold"),
+                              xanchor="right", yanchor="bottom", xshift=-4)
             fig.update_layout(
                 font=dict(size=FONT_SIZE, color='#1E293B'),
                 title=dict(font=dict(size=FONT_SIZE_TITLE)),
-                height=350,
+                height=400,
                 xaxis=dict(tickfont=dict(size=FONT_SIZE)),
                 yaxis=dict(tickfont=dict(size=FONT_SIZE)),
                 margin=dict(l=10,r=10,t=70,b=30)
@@ -335,7 +507,7 @@ def page_kehamilan(df):
             fig.update_layout(
                 font=dict(size=FONT_SIZE, color='#1E293B'),
                 title=dict(font=dict(size=FONT_SIZE_TITLE)),
-                height=350,
+                height=400,
                 margin=dict(l=10,r=10,t=70,b=10)
             )
             st.plotly_chart(fig,use_container_width=True); del fig
@@ -394,7 +566,7 @@ def page_kehamilan(df):
 
     gc.collect()
 
-# ===== 2. IMUNISASI =====
+# ===== 3. IMUNISASI =====
 def page_imunisasi(df):
     n=len(df)
     st.markdown('<div class="sh">💉 Cakupan Imunisasi</div>',unsafe_allow_html=True)
@@ -411,7 +583,7 @@ def page_imunisasi(df):
         idf=pd.DataFrame(rows).sort_values('Cakupan',ascending=True)
         fig=px.bar(idf,x='Cakupan',y='Imunisasi',orientation='h',text=idf['Cakupan'].apply(fmt),color='Cakupan',color_continuous_scale=['#DC2626','#F59E0B','#16A34A'],color_continuous_midpoint=50)
         fig.update_traces(textposition='outside',cliponaxis=False,textfont=dict(size=FONT_SIZE_TRACE, color='#1E293B'))
-        fig.add_vline(x=80,line_dash='dash',line_color='green',annotation_text='Target 80%',annotation_font_color='#1E293B')
+        fig.add_vline(x=80,line_dash='dash',line_color='red',annotation_text='Target 80%',annotation_font_color='red')
         fig.update_layout(
             font=dict(size=FONT_SIZE, color='#1E293B'),
             title=dict(font=dict(size=FONT_SIZE_TITLE)),
@@ -441,7 +613,7 @@ def page_imunisasi(df):
             st.markdown(f'<div class="card" style="font-size:1rem"><b>IDL</b> = 10 imunisasi wajib<br><br>✅ Lengkap: <b>{lgk} ({fmt(pct(lgk,n))})</b><br>❌ Tidak: <b>{n-lgk} ({fmt(pct(n-lgk,n))})</b></div>',unsafe_allow_html=True)
     gc.collect()
 
-# ===== 3. ASI & MPASI =====
+# ===== 4. ASI & MPASI =====
 def page_asi_mpasi(df):
     n=len(df)
     st.markdown('<div class="sh">🍼 Praktik Pemberian Air Susu Ibu</div>',unsafe_allow_html=True)
@@ -473,7 +645,10 @@ def page_asi_mpasi(df):
         if col:
             sapih=to_num(df[col]).dropna()
             if len(sapih)>0:
-                fig,m,mn,_=dist_bar(sapih,[0,6,12,18,24,30],['0-5','6-11','12-17','18-23','≥ 24'],'📊 Umur Berhenti Diberi ASI (bulan)','#F59E0B')
+                # Threshold di index 4 (antara '18-23' dan '≥ 24')
+                fig,m,mn,_=dist_bar(sapih,[0,6,12,18,24,30],
+                                   ['0-5','6-11','12-17','18-23','≥ 24'],
+                                   '📊 Umur Berhenti Diberi ASI (bulan)','#F59E0B',4,'< 24 bulan (ASI Dini)')
                 st.plotly_chart(fig,use_container_width=True); del fig
                 dini=(sapih<24).sum()
                 st.markdown(f'<div class="card">⚠️ Berhenti ASI dini (< 24 bulan): <b>{dini}</b> ({fmt(pct(dini,len(sapih)))})</div>',unsafe_allow_html=True)
@@ -482,13 +657,20 @@ def page_asi_mpasi(df):
     if col:
         st.markdown('<div class="sh">🥣 Umur Mulai Makanan Pendamping ASI</div>',unsafe_allow_html=True)
         order=["0 - 7 hari","8 - 29 hari","1 - < 2 bulan","2 - < 3 bulan","3 - < 4 bulan","4 - < 5 bulan","5 - < 6 bulan","6 - < 7 bulan","≥ 7 bulan"]
-        md=df[col].value_counts().reindex(order).dropna().reset_index(); md.columns=['Umur','Jumlah']
+        md=df[col].value_counts().reindex(order).fillna(0).astype(int).reset_index(); md.columns=['Umur','Jumlah']
         fig=px.bar(md,x='Umur',y='Jumlah',text='Jumlah',title='📊 Distribusi Umur Mulai Makanan Pendamping ASI',color_discrete_sequence=['#F59E0B'])
         fig.update_traces(textposition='outside',cliponaxis=False,textfont=dict(size=FONT_SIZE_TRACE, color='#1E293B'))
+        # Garis batas: antara "5 - < 6 bulan" (index 6) dan "6 - < 7 bulan" (index 7) → x=6.5
+        # Dengan fillna(0), semua 9 kategori selalu ada sehingga posisi index tetap konsisten
+        fig.add_shape(type="line", x0=6.5, x1=6.5, y0=0, y1=1, yref="paper",
+                     line=dict(color="red", width=2.5, dash="dash"))
+        fig.add_annotation(x=6.5, y=1, yref="paper", text="< 6 bulan (Makanan Pendamping Dini)",
+                          showarrow=False, font=dict(color="red", size=FONT_SIZE-1, weight="bold"),
+                          xanchor="right", yanchor="bottom", xshift=-4)
         fig.update_layout(
             font=dict(size=FONT_SIZE, color='#1E293B'),
             title=dict(font=dict(size=FONT_SIZE_TITLE)),
-            height=400,
+            height=450,
             xaxis=dict(tickfont=dict(size=FONT_SIZE-1)),
             yaxis=dict(tickfont=dict(size=FONT_SIZE)),
             margin=dict(l=10,r=10,t=70,b=30)
@@ -523,7 +705,7 @@ def page_asi_mpasi(df):
             Rerata: <b>{dds_vals.mean():.1f}</b></div>""",unsafe_allow_html=True)
     gc.collect()
 
-# ===== 4. PENGASUHAN =====
+# ===== 5. PENGASUHAN =====
 def page_pengasuhan(df):
     n=len(df)
     st.markdown('<div class="sh">🏥 Pengasuhan Balita</div>',unsafe_allow_html=True)
@@ -583,7 +765,7 @@ def page_pengasuhan(df):
     render_determinan(df)
     gc.collect()
 
-# ===== FUNGSI DETERMINAN (dipanggil dari pengasuhan) =====
+# ===== FUNGSI DETERMINAN =====
 def render_determinan(df):
     n=len(df)
     st.markdown('<div class="sh">🔍 Analisis Determinan</div>',unsafe_allow_html=True)
@@ -677,7 +859,7 @@ def render_determinan(df):
         del rdf
     gc.collect()
 
-# ===== 5. KONSUMSI IBU =====
+# ===== 6. KONSUMSI IBU =====
 def page_konsumsi_ibu(df):
     n=len(df)
     col=g(df,'kons_ibu')
@@ -702,62 +884,119 @@ def page_konsumsi_ibu(df):
         col=g(df,key)
         if col:
             with container:
-                fig,m,mn,s=dist_bar(df[col],[0,1,2,3,4,5,8],['0','1','2','3','4','≥ 5'],f'📊 {title} (24 jam)',clr)
-                st.plotly_chart(fig,use_container_width=True); del fig
+                # PERBAIKAN: Hanya tambahkan threshold untuk 'Makan Lengkap', tidak untuk 'Kudapan'
                 if 'Lengkap' in title:
+                    # Threshold di index 3 (antara '2' dan '3')
+                    fig,m,mn,s=dist_bar(df[col],[0,1,2,3,4,5,8],
+                                       ['0','1','2','3','4','≥ 5'],
+                                       f'📊 {title} (24 jam)',clr,3,'< 3x/hari')
+                    st.plotly_chart(fig,use_container_width=True); del fig
                     kurang=(s<3).sum()
                     st.markdown(f'<div class="card">⚠️ Makan < 3×: <b>{kurang}</b> ({fmt(pct(kurang,len(s)))})</div>',unsafe_allow_html=True)
+                else:
+                    # Kudapan - tanpa garis threshold
+                    fig,m,mn,s=dist_bar(df[col],[0,1,2,3,4,5,8],
+                                       ['0','1','2','3','4','≥ 5'],
+                                       f'📊 {title} (24 jam)',clr)
+                    st.plotly_chart(fig,use_container_width=True); del fig
     gc.collect()
 
 # ===== MAIN =====
 def main():
     st.markdown("""<div class="dh"><h1>📋 Dashboard Indepth Stunting</h1>
-    <p>Kelurahan Satimpo, Kec. Bontang Selatan, Kota Bontang — Kalimantan Timur | Juni 2026</p></div>""",unsafe_allow_html=True)
+    <p>Kelurahan Satimpo, Kec. Bontang Selatan, Kota Bontang — Kalimantan Timur | Juni 2026</p></div>""", unsafe_allow_html=True)
     st.markdown("""<div style="background:linear-gradient(135deg,#F0FDFA,#CCFBF1);border:1px solid #5EEAD4;border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1rem">
     <div style="font-size:1.05rem;font-weight:600;color:#134E4A;margin-bottom:.6rem">📌 Tentang Penelitian</div>
     <div style="font-size:.95rem;color:#1E293B;line-height:1.7">
     Indepth survey terhadap <b>seluruh 48 balita stunting</b> di Kel. Satimpo (Juni 2026).
     Dari 347 balita ditimbang, <b>48 teridentifikasi stunting (13,83%)</b> — seluruhnya menjadi responden (<i>total sampling</i>).
-    Referensi: SSGI 2024.</div></div>""",unsafe_allow_html=True)
+    Referensi: SSGI 2024.</div></div>""", unsafe_allow_html=True)
 
-    try: df=load_data()
-    except Exception as e: st.error(f"⚠️ File tidak ditemukan: {e}"); st.stop()
+    try: 
+        df = load_data()
+    except Exception as e: 
+        st.error(f"⚠️ File tidak ditemukan: {e}")
+        st.stop()
 
     # === SIDEBAR: Filter RT & Posyandu ===
-    st.sidebar.markdown('<h2 style="color:#0F766E;text-align:center;font-size:1.2rem">🔍 Filter Data</h2>',unsafe_allow_html=True)
+    st.sidebar.markdown('<h2 style="color:#0F766E;text-align:center;font-size:1.2rem">🔍 Filter Data</h2>', unsafe_allow_html=True)
 
-    rt_col=col_find(df,'RT')
-    pos_col=col_find(df,'Posyandu')
+    rt_col = col_find(df, 'RT')
+    pos_col = col_find(df, 'Posyandu')
 
     if rt_col:
-        rt_list=sorted(df[rt_col].dropna().unique(), key=lambda x: int(x) if str(x).isdigit() else 0)
-        sel_rt=st.sidebar.multiselect("🏘️ RT",options=rt_list,default=rt_list)
-        df=df[df[rt_col].isin(sel_rt)]
+        rt_list = sorted(df[rt_col].dropna().unique(), key=lambda x: int(x) if str(x).isdigit() else 0)
+        sel_rt = st.sidebar.multiselect("🏘️ RT", options=rt_list, default=rt_list)
+        df = df[df[rt_col].isin(sel_rt)]
 
     if pos_col:
-        pos_list=sorted(df[pos_col].dropna().unique())
-        sel_pos=st.sidebar.multiselect("🏥 Posyandu",options=pos_list,default=pos_list)
-        df=df[df[pos_col].isin(sel_pos)]
+        pos_list = sorted(df[pos_col].dropna().unique())
+        sel_pos = st.sidebar.multiselect("🏥 Posyandu", options=pos_list, default=pos_list)
+        df = df[df[pos_col].isin(sel_pos)]
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown('<h2 style="color:#0F766E;text-align:center;font-size:1.2rem">📋 Info</h2>',unsafe_allow_html=True)
+    st.sidebar.markdown('<h2 style="color:#0F766E;text-align:center;font-size:1.2rem">📋 Info</h2>', unsafe_allow_html=True)
     st.sidebar.markdown(f"**Responden tampil:** {len(df)}\n\n**Desain:** Total sampling\n\n**Referensi:** SSGI 2024")
     st.sidebar.markdown("---")
     st.sidebar.info("**Prevalensi Stunting Satimpo:**\n48 balita stunting dari 347 balita ditimbang (13,83%)\n\n**Prevalensi Stunting Kota Bontang:**\n1.389 dari 9.884 balita ditimbang (14,05%)\n\n**Peringkat Satimpo:**\nUrutan ke-8 dari 15 kelurahan di Kota Bontang")
 
-    if len(df)==0:
+    if len(df) == 0:
         st.warning("⚠️ Tidak ada data yang sesuai filter. Silakan ubah pilihan RT atau Posyandu.")
         st.stop()
 
-    halaman=st.radio("",["📊 Ringkasan","🤰 Riwayat Kehamilan","💉 Imunisasi","🍼 ASI & Makanan Pendamping","🏥 Pengasuhan & Determinan","🍽️ Konsumsi Ibu"],horizontal=True,label_visibility="collapsed")
+    # === MENU NAVIGASI INTERAKTIF ===
+    if 'menu_aktif' not in st.session_state:
+        st.session_state.menu_aktif = "ringkasan"
+    
+    menu_data = [
+        {"key": "ringkasan", "icon": "📊", "label": "Ringkasan"},
+        {"key": "kehamilan", "icon": "🤰", "label": "Riwayat Kehamilan"},
+        {"key": "imunisasi", "icon": "💉", "label": "Imunisasi"},
+        {"key": "asi_mpasi", "icon": "🍼", "label": "ASI & MPASI"},
+        {"key": "pengasuhan", "icon": "🏥", "label": "Pengasuhan & Determinan"},
+        {"key": "konsumsi", "icon": "🍽️", "label": "Konsumsi Ibu"},
+    ]
+    
+    cols = st.columns(len(menu_data))
+    
+    for col, item in zip(cols, menu_data):
+        with col:
+            is_active = st.session_state.menu_aktif == item["key"]
+            
+            if is_active:
+                st.markdown(f"""
+                <div class="menu-btn active">
+                    <span class="menu-icon">{item['icon']}</span>
+                    <span class="menu-label">{item['label']}</span>
+                </div>
+                """, unsafe_allow_html=True)
+            else:
+                if st.button(
+                    f"{item['icon']}\n{item['label']}",
+                    key=f"menu_{item['key']}",
+                    use_container_width=True,
+                    type="secondary"
+                ):
+                    st.session_state.menu_aktif = item["key"]
+                    st.rerun()
+    
     st.markdown("---")
-    if halaman=="📊 Ringkasan": page_ringkasan(df)
-    elif halaman=="🤰 Riwayat Kehamilan": page_kehamilan(df)
-    elif halaman=="💉 Imunisasi": page_imunisasi(df)
-    elif halaman=="🍼 ASI & Makanan Pendamping": page_asi_mpasi(df)
-    elif halaman=="🏥 Pengasuhan & Determinan": page_pengasuhan(df)
-    elif halaman=="🍽️ Konsumsi Ibu": page_konsumsi_ibu(df)
+    
+    if st.session_state.menu_aktif == "ringkasan":
+        page_ringkasan(df)
+    elif st.session_state.menu_aktif == "kehamilan":
+        page_kehamilan(df)
+    elif st.session_state.menu_aktif == "imunisasi":
+        page_imunisasi(df)
+    elif st.session_state.menu_aktif == "asi_mpasi":
+        page_asi_mpasi(df)
+    elif st.session_state.menu_aktif == "pengasuhan":
+        page_pengasuhan(df)
+    elif st.session_state.menu_aktif == "konsumsi":
+        page_konsumsi_ibu(df)
+    
     st.markdown("---")
-    st.markdown('<div style="text-align:center;color:#64748B;font-size:.9rem">Dashboard Indepth Stunting — Kel. Satimpo, Kota Bontang | Juni 2026 | Referensi: SSGI 2024</div>',unsafe_allow_html=True)
+    st.markdown('<div style="text-align:center;color:#64748B;font-size:.9rem">Dashboard Indepth Stunting — Kel. Satimpo, Kota Bontang | Juni 2026 | Referensi: SSGI 2024</div>', unsafe_allow_html=True)
 
-if __name__=="__main__": main()
+if __name__ == "__main__":
+    main()
