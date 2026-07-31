@@ -264,17 +264,21 @@ def page_kehamilan(df):
     with c1:
         col=g(df,'tinggi_ayah')
         if col:
-            fig,m,mn,s=dist_bar(df[col],[150,155,160,165,170,175,190],['150-154','155-159','160-164','165-169','170-174','≥ 175'],'📊 Tinggi Badan Ayah (cm)','#0891B2')
+            fig,m,mn,s=dist_bar(df[col],[0,160,165,170,175,190],['< 160\n(Pendek)','160-164','165-169','170-174','≥ 175'],'📊 Tinggi Badan Ayah (cm)','#0891B2')
+            fig.add_shape(type="line",x0=0.5,x1=0.5,y0=0,y1=1,yref="paper",line=dict(color="red",width=2,dash="dash"))
+            fig.add_annotation(x=0.5,y=1,yref="paper",text="< 160 cm",showarrow=False,font=dict(color="red",size=11),xanchor="right",yanchor="bottom",xshift=-4)
             st.plotly_chart(fig,use_container_width=True); del fig
             pdk=(s<160).sum()
-            st.markdown(f'<div class="card">📏 Terbanyak: <b>{m} cm</b> ({mn}) | Pendek (< 160 cm): <b>{pdk}</b> ({fmt(pct(pdk,len(s)))})</div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="card">📏 Terbanyak: <b>{m}</b> ({mn}) | Pendek (< 160 cm): <b>{pdk}</b> ({fmt(pct(pdk,len(s)))})</div>',unsafe_allow_html=True)
     with c2:
         col=g(df,'tinggi_ibu')
         if col:
-            fig,m,mn,s=dist_bar(df[col],[140,145,150,155,160,165,175],['140-144','145-149','150-154','155-159','160-164','≥ 165'],'📊 Tinggi Badan Ibu (cm)','#D946EF')
+            fig,m,mn,s=dist_bar(df[col],[0,150,155,160,165,175],['< 150\n(Pendek)','150-154','155-159','160-164','≥ 165'],'📊 Tinggi Badan Ibu (cm)','#D946EF')
+            fig.add_shape(type="line",x0=0.5,x1=0.5,y0=0,y1=1,yref="paper",line=dict(color="red",width=2,dash="dash"))
+            fig.add_annotation(x=0.5,y=1,yref="paper",text="< 150 cm",showarrow=False,font=dict(color="red",size=11),xanchor="right",yanchor="bottom",xshift=-4)
             st.plotly_chart(fig,use_container_width=True); del fig
             pdk=(s<150).sum()
-            st.markdown(f'<div class="card">📏 Terbanyak: <b>{m} cm</b> ({mn}) | Pendek (< 150 cm): <b>{pdk}</b> ({fmt(pct(pdk,len(s)))})</div>',unsafe_allow_html=True)
+            st.markdown(f'<div class="card">📏 Terbanyak: <b>{m}</b> ({mn}) | Pendek (< 150 cm): <b>{pdk}</b> ({fmt(pct(pdk,len(s)))})</div>',unsafe_allow_html=True)
 
     # Paritas & Jarak kehamilan
     st.markdown('<div class="sh">📊 Paritas dan Jarak Kehamilan</div>',unsafe_allow_html=True)
